@@ -1,6 +1,9 @@
-package com.chen.server;
+package com.chen.socket.server;
 
+import com.chen.RpcServer;
 import com.chen.register.ServiceRegistry;
+import com.chen.RequestHandler;
+import com.chen.serializer.CommonSerializer;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
@@ -10,7 +13,7 @@ import java.util.concurrent.*;
 
 
 @Slf4j
-public class RpcServer {
+public class SocketServer implements RpcServer {
 
     private static final int CORE_POOL_SIZE = 5;
     private static final int MAXIMUM_POOL_SIZE = 50;
@@ -18,15 +21,15 @@ public class RpcServer {
     private static final int BLOCKING_QUEUE_CAPACITY = 100;
     private final ExecutorService threadPool;
 
+    private CommonSerializer serializer;
+
 
     private RequestHandler requestHandler = new RequestHandler();
     private final ServiceRegistry serviceRegistry;
 
 
 
-
-
-    public RpcServer(ServiceRegistry serviceRegistry) {
+    public SocketServer(ServiceRegistry serviceRegistry) {
         this.serviceRegistry = serviceRegistry;
         BlockingQueue<Runnable> workingQueue = new ArrayBlockingQueue<>(BLOCKING_QUEUE_CAPACITY);
         ThreadFactory threadFactory = Executors.defaultThreadFactory();
@@ -40,13 +43,18 @@ public class RpcServer {
             Socket socket;
             while((socket = serverSocket.accept()) != null) {
                 log.info("消费者连接:{}:{}", socket.getInetAddress(), socket.getPort());
-                threadPool.execute(new RequestHandlerThread(socket, requestHandler, serviceRegistry));
+                threadPool.execute(new RequestHandlerThread(socket, requestHandler, serviceRegistry, serializer));
             }
 
             threadPool.shutdown();
         } catch (IOException e) {
             log.error("服务器启动时有错误发生：", e);
         }
+    }
+
+    @Override
+    public void setSerializer(CommonSerializer serializer) {
+        this.serializer = serializer;
     }
 
 }

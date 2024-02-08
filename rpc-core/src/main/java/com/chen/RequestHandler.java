@@ -1,4 +1,4 @@
-package com.chen.server;
+package com.chen;
 
 import com.chen.rpc.entity.RpcRequest;
 import com.chen.rpc.entity.RpcResponse;
@@ -25,7 +25,7 @@ public class RequestHandler {
         try {
             method = service.getClass().getMethod(rpcRequest.getMethodName(), rpcRequest.getParamTypes());
         } catch (NoSuchMethodException e) {
-            return RpcResponse.fail(ResponseCode.METHOD_NOT_FOUND);
+            return RpcResponse.fail(ResponseCode.METHOD_NOT_FOUND, rpcRequest.getRequestId());
         }
         return method.invoke(service, rpcRequest.getParameters());
     }

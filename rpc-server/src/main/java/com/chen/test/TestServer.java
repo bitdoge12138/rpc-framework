@@ -3,7 +3,8 @@ package com.chen.test;
 import com.chen.api.UserService;
 import com.chen.register.DefaultServiceRegistry;
 import com.chen.register.ServiceRegistry;
-import com.chen.server.RpcServer;
+import com.chen.serializer.impl.KryoSerializer;
+import com.chen.socket.server.SocketServer;
 import com.chen.service.UserServiceImpl;
 
 public class TestServer {
@@ -15,9 +16,11 @@ public class TestServer {
 
         serviceRegistry.register(userService);
 
-        RpcServer rpcServer = new RpcServer(serviceRegistry);
+        SocketServer socketServer = new SocketServer(serviceRegistry);
 
-        rpcServer.start(9000);
+        socketServer.setSerializer(new KryoSerializer());
+
+        socketServer.start(9000);
 
 
 
