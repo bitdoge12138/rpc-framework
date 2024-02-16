@@ -1,6 +1,10 @@
 package com.chen.socket.client;
 
 import com.chen.RpcClient;
+import com.chen.loadbalancer.LoadBalancer;
+import com.chen.loadbalancer.impl.RandomLoadBalancer;
+import com.chen.register.ServiceDiscovery;
+import com.chen.register.impl.NacosServiceDiscovery;
 import com.chen.rpc.entity.RpcRequest;
 import com.chen.rpc.entity.RpcResponse;
 import com.chen.rpc.enumeration.ResponseCode;
@@ -13,22 +17,35 @@ import com.chen.socket.util.ObjectWriter;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.*;
+import java.net.InetSocketAddress;
 import java.net.Socket;
 
 
 @Slf4j
 public class SocketClient implements RpcClient {
-    private final String host;
 
-    private final int port;
-
-    private CommonSerializer serializer;
+    private final ServiceDiscovery serviceDiscovery;
+    private final CommonSerializer serializer;
 
 
-    public SocketClient(String host, int port) {
-        this.host = host;
-        this.port = port;
+    public SocketClient() {
+        this(DEFAULT_SERIALIZER, new RandomLoadBalancer());
     }
+    public SocketClient(LoadBalancer loadBalancer) {
+        this(DEFAULT_SERIALIZER, loadBalancer);
+    }
+
+    public SocketClient(Integer serializer) {
+        this.serviceDiscovery = new NacosServiceDiscovery(new RandomLoadBalancer());
+        this.serializer = CommonSerializer.getByCode(serializer);
+    }
+
+    public SocketClient(Integer serializer, LoadBalancer loadBalancer) {
+        this.serviceDiscovery = new NacosServiceDiscovery(loadBalancer);
+        this.serializer = CommonSerializer.getByCode(serializer);
+    }
+
+
 
     @Override
     public Object sendRequest(RpcRequest rpcRequest) {
@@ -36,7 +53,9 @@ public class SocketClient implements RpcClient {
             log.error("未设置序列化器");
             throw new RpcException(RpcError.SERIALIZER_NOT_FOUND);
         }
-        try (Socket socket = new Socket(host, port)) {
+        InetSocketAddress inetSocketAddress = serviceDiscovery.lookupService(rpcRequest.getInterfaceName());
+        try (Socket socket = new Socket()) {
+            socket.connect(inetSocketAddress);
             // 通过 Socket 获取输出流，用于向服务端发送数据
             OutputStream outputStream = socket.getOutputStream();
             // 通过 Socket 获取输入流，用于从服务端接收数据
@@ -55,15 +74,12 @@ public class SocketClient implements RpcClient {
                 throw new RpcException(RpcError.SERVICE_INVOCATION_FAILURE, " service:" + rpcRequest.getInterfaceName());
             }
             RpcMessageChecker.check(rpcRequest, rpcResponse);
-            return rpcResponse.getData();
+            return rpcResponse;
         } catch (IOException e) {
             log.error("调用时有错误发生：", e);
             throw new RpcException("服务调用失败: ", e);
         }
     }
 
-    @Override
-    public void setSerializer(CommonSerializer serializer) {
-        this.serializer = serializer;
-    }
+
 }

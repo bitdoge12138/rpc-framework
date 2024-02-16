@@ -1,7 +1,6 @@
 package com.chen.rpc.entity;
 
 import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Data;
 
 import java.io.Serializable;
@@ -27,4 +26,9 @@ public class RpcRequest implements Serializable {
 
 
     private Class<?>[] paramTypes;
+
+    /**
+     * 是否是心跳包
+     */
+    private Boolean heartBeat;
 }
